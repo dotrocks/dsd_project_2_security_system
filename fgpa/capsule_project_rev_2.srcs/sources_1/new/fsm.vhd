@@ -9,6 +9,9 @@ USE IEEE.STD_LOGIC_1164.ALL;
 USE IEEE.NUMERIC_STD.ALL;
 
 ENTITY FSM_CONTROLLER IS
+    GENERIC (
+        CLOCKS_PER_SECOND : INTEGER := 100_000_000
+    );
     PORT (
         CLK             : IN  STD_LOGIC;
         
@@ -45,32 +48,23 @@ ARCHITECTURE BEHAVIORAL OF FSM_CONTROLLER IS
     SIGNAL UPDATE_WRONG_COUNT           : STD_LOGIC                     := '0';
     SIGNAL LOAD_PASSWORD                : STD_LOGIC                     := '0';
 BEGIN
-
-    PROCESS(CLK, RESET)
-    BEGIN
-        IF RESET = '1' THEN
-            CURRENT_STATE <= IDLE;
-        ELSIF RISING_EDGE(CLK) THEN
-            CURRENT_STATE <= NEXT_STATE;
-        END IF;
-    END PROCESS;
-    
     -- Countdown logic
     PROCESS(CLK)
     BEGIN
         IF RISING_EDGE(CLK) THEN
             IF CURRENT_STATE = DOOR_OPEN THEN
-                IF COUNTDOWN_COUNTER < TO_UNSIGNED(100_000_000 - 1, 32) THEN
+                IF COUNTDOWN_COUNTER < TO_UNSIGNED(CLOCKS_PER_SECOND - 1, 32) THEN
                     COUNTDOWN_COUNTER   <= COUNTDOWN_COUNTER + 1;
                     SECOND_TICK         <= '0';
                 ELSE
                     COUNTDOWN_COUNTER   <= (OTHERS => '0');
                     SECOND_TICK         <= '1';
+    
                     IF SEC_COUNT > 0 THEN
                         SEC_COUNT <= SEC_COUNT - 1;
                     END IF;
                 END IF;
-
+    
                 IF SEC_COUNT = 0 THEN
                     COUNTDOWN_DONE <= '1';
                 ELSE

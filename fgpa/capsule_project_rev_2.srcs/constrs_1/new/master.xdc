@@ -20,6 +20,9 @@ set_property -dict { PACKAGE_PIN T3 IOSTANDARD LVCMOS33 } [get_ports {SW_PASS[9]
 set_property -dict { PACKAGE_PIN U16 IOSTANDARD LVCMOS33 } [get_ports STATUS_LED]
 set_property -dict { PACKAGE_PIN E19 IOSTANDARD LVCMOS33 } [get_ports LD1]
 set_property -dict { PACKAGE_PIN U19 IOSTANDARD LVCMOS33 } [get_ports LD2]
+set_property -dict { PACKAGE_PIN N3    IOSTANDARD LVCMOS33 } [get_ports {FSM_STATE_OUT[0]}]
+set_property -dict { PACKAGE_PIN P1    IOSTANDARD LVCMOS33 } [get_ports {FSM_STATE_OUT[1]}]
+set_property -dict { PACKAGE_PIN L1    IOSTANDARD LVCMOS33 } [get_ports {FSM_STATE_OUT[2]}]
 
 ##7 Segment Display
 set_property -dict { PACKAGE_PIN W7 IOSTANDARD LVCMOS33 } [get_ports {SEGMENTS[0]}]

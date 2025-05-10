@@ -9,26 +9,33 @@ USE IEEE.STD_LOGIC_1164.ALL;
 USE IEEE.NUMERIC_STD.ALL;
 
 ENTITY TOP_LEVEL IS
+    GENERIC (
+        CLOCKS_PER_SECOND   : INTEGER := 100_000_000;
+        BLINK_PERIOD_MS  : INTEGER := 500;
+        MAX_SECONDS         : INTEGER := 30
+    );
     PORT (
         -- Internal 100MHz clock
-        CLK100MHZ  : IN STD_LOGIC;
+        CLK100MHZ       : IN STD_LOGIC;
         
         -- INPUTS
-        BTN_SETUP   : IN  STD_LOGIC; -- btnU
-        BTN_ARM     : IN  STD_LOGIC; -- btnD
-        BTN_RESET   : IN  STD_LOGIC; -- btnC
-        BTN_DOOR    : IN  STD_LOGIC; -- btnR
-        BTN_SEND    : IN  STD_LOGIC; -- btnL
-        SW_PASS     : IN  STD_LOGIC_VECTOR(9 DOWNTO 0);
+        BTN_SETUP       : IN  STD_LOGIC; -- btnU
+        BTN_ARM         : IN  STD_LOGIC; -- btnD
+        BTN_RESET       : IN  STD_LOGIC; -- btnC
+        BTN_DOOR        : IN  STD_LOGIC; -- btnR
+        BTN_SEND        : IN  STD_LOGIC; -- btnL
+        SW_PASS         : IN  STD_LOGIC_VECTOR(9 DOWNTO 0);
 
         -- LED outputs
-        STATUS_LED  : OUT STD_LOGIC;
-        LD1         : OUT STD_LOGIC;
-        LD2         : OUT STD_LOGIC;
+        STATUS_LED      : OUT STD_LOGIC;
+        LD1             : OUT STD_LOGIC;
+        LD2             : OUT STD_LOGIC;
 
         -- 7 segment display
-        ANODES      : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
-        SEGMENTS    : OUT STD_LOGIC_VECTOR(6 DOWNTO 0)
+        ANODES          : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+        SEGMENTS        : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+        
+        FSM_STATE_OUT   : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
     );
 END TOP_LEVEL;
 
@@ -118,6 +125,9 @@ BEGIN
 
     -- FSM controller
     FSM_INST: ENTITY WORK.FSM_CONTROLLER
+        GENERIC MAP (
+            CLOCKS_PER_SECOND => CLOCKS_PER_SECOND
+        )
         PORT MAP (
             CLK             => CLK100MHZ,
             
@@ -149,18 +159,30 @@ BEGIN
         
     -- LED controllers
     STATUS_LED_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
+        GENERIC MAP ( 
+            CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
+            BLINK_PERIOD_MS     => BLINK_PERIOD_MS
+        )
         PORT MAP (
             CLK     => CLK100MHZ,
             MODE    => STATUS_LED_MODE,
             LED_OUT => STATUS_LED
         );
     LD1_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
+        GENERIC MAP ( 
+            CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
+            BLINK_PERIOD_MS     => BLINK_PERIOD_MS
+        )
         PORT MAP (
             CLK     => CLK100MHZ,
             MODE    => LD1_MODE,
             LED_OUT => LD1
         );
     LD2_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
+        GENERIC MAP ( 
+            CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
+            BLINK_PERIOD_MS     => BLINK_PERIOD_MS
+        )
         PORT MAP (
             CLK     => CLK100MHZ,
             MODE    => LD2_MODE,
@@ -169,6 +191,10 @@ BEGIN
 
     -- Countdown timer
     COUNTDOWN_INST: ENTITY WORK.COUNTDOWN_TIMER
+        GENERIC MAP (
+            CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
+            MAX_SECONDS         => MAX_SECONDS
+        )
         PORT MAP (
             CLK     => CLK100MHZ,
             RESET   => INTERNAL_COUNTER_RESET,
@@ -237,4 +263,5 @@ BEGIN
     END PROCESS;
     
     INTERNAL_COUNTER_RESET <= DEBOUNCED_BTN_RESET OR RESET_COUNTER;
+    FSM_STATE_OUT <= FSM_STATE;
 END STRUCTURAL;

@@ -1,7 +1,7 @@
 *cache*
 *hw*
 *runs*
-*sim*
+*.sim*
 *vivado*
 *.Xil*
 *.ip_user_files*
