@@ -1,0 +1,38 @@
+----------------------------------------------------------------------------------
+-- Created at: 10.05.2025
+-- Author: Barış DEMİRCİ <hi@338.rocks>
+-- Description: Debounces a button input for cleaner signal acquisition.
+----------------------------------------------------------------------------------
+
+LIBRARY IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
+
+ENTITY BUTTON_DEBOUNCER IS
+    PORT (
+        CLK     : IN  STD_LOGIC;
+        BTN_IN  : IN  STD_LOGIC;
+        BTN_OUT : OUT STD_LOGIC
+    );
+END BUTTON_DEBOUNCER;
+
+ARCHITECTURE BEHAVIORAL OF BUTTON_DEBOUNCER IS
+    SIGNAL BUTTON_SYNC      : STD_LOGIC := '1';
+    SIGNAL BUTTON_PREV      : STD_LOGIC := '1';
+    SIGNAL IMPULSE_INTERNAL : STD_LOGIC := '0';
+BEGIN
+
+    PROCESS(CLK)
+    BEGIN
+        IF RISING_EDGE(CLK) THEN
+            BUTTON_PREV         <= BUTTON_SYNC;
+            BUTTON_SYNC         <= BTN_IN;
+            IMPULSE_INTERNAL    <= '0';
+
+            IF BUTTON_PREV = '0' AND BUTTON_SYNC = '1' THEN
+                IMPULSE_INTERNAL <= '1'; -- Button released
+            END IF;
+        END IF;
+    END PROCESS;
+
+    BTN_OUT <= IMPULSE_INTERNAL;
+END BEHAVIORAL;

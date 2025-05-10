@@ -1,0 +1,7 @@
+*cache*
+*hw*
+*runs*
+*sim*
+*vivado*
+*.Xil*
+*.ip_user_files*
