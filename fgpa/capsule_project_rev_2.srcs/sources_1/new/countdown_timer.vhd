@@ -11,7 +11,8 @@ USE IEEE.NUMERIC_STD.ALL;
 ENTITY COUNTDOWN_TIMER IS
     GENERIC (
         CLOCKS_PER_SECOND   : INTEGER := 100_000_000;
-        MAX_SECONDS         : INTEGER := 30
+        MAX_SECONDS         : INTEGER := 30;
+        SIMULATION_MODE     : BOOLEAN := FALSE
     );
     PORT (
         CLK     : IN  STD_LOGIC;
@@ -39,15 +40,29 @@ BEGIN
                 CURRENT_SEC     <= MAX_SECONDS;
                 SECOND_COUNTER  <= 0;
             ELSIF COUNTING THEN
-                IF SECOND_COUNTER = CLOCKS_PER_SECOND - 1 THEN
-                    SECOND_COUNTER <= 0;
-                    IF CURRENT_SEC > 0 THEN
-                        CURRENT_SEC <= CURRENT_SEC - 1;
+                -- Simulate faster in simulation mode
+                IF SIMULATION_MODE THEN
+                    IF SECOND_COUNTER = CLOCKS_PER_SECOND / 100_000_000 - 1 THEN -- TODO: not working???
+                        SECOND_COUNTER <= 0;
+                        IF CURRENT_SEC > 0 THEN
+                            CURRENT_SEC <= CURRENT_SEC - 1;
+                        ELSE
+                            COUNTING <= FALSE;
+                        END IF;
                     ELSE
-                        COUNTING <= FALSE;
+                        SECOND_COUNTER <= SECOND_COUNTER + 1;
                     END IF;
                 ELSE
-                    SECOND_COUNTER <= SECOND_COUNTER + 1;
+                    IF SECOND_COUNTER = CLOCKS_PER_SECOND - 1 THEN
+                        SECOND_COUNTER <= 0;
+                        IF CURRENT_SEC > 0 THEN
+                            CURRENT_SEC <= CURRENT_SEC - 1;
+                        ELSE
+                            COUNTING <= FALSE;
+                        END IF;
+                    ELSE
+                        SECOND_COUNTER <= SECOND_COUNTER + 1;
+                    END IF;
                 END IF;
             END IF;
         END IF;

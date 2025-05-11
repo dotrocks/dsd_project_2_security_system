@@ -11,8 +11,9 @@ USE IEEE.NUMERIC_STD.ALL;
 ENTITY TOP_LEVEL IS
     GENERIC (
         CLOCKS_PER_SECOND   : INTEGER := 100_000_000;
-        BLINK_PERIOD_MS  : INTEGER := 500;
-        MAX_SECONDS         : INTEGER := 30
+        BLINK_PERIOD_MS     : INTEGER := 500;
+        MAX_SECONDS         : INTEGER := 30;
+        SIMULATION_MODE     : BOOLEAN := FALSE
     );
     PORT (
         -- Internal 100MHz clock
@@ -193,7 +194,8 @@ BEGIN
     COUNTDOWN_INST: ENTITY WORK.COUNTDOWN_TIMER
         GENERIC MAP (
             CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
-            MAX_SECONDS         => MAX_SECONDS
+            MAX_SECONDS         => MAX_SECONDS,
+            SIMULATION_MODE     => SIMULATION_MODE
         )
         PORT MAP (
             CLK     => CLK100MHZ,

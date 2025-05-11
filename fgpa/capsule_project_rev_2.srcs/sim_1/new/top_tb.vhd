@@ -1,6 +1,7 @@
 LIBRARY IEEE;
 USE IEEE.STD_LOGIC_1164.ALL;
 USE IEEE.NUMERIC_STD.ALL;
+use work.LoggerPkg.all;
 
 ENTITY TB_TOP_LEVEL IS
 END ENTITY;
@@ -29,9 +30,7 @@ BEGIN
     -- Instantiate DUT
     DUT: ENTITY WORK.TOP_LEVEL
         GENERIC MAP (
-            CLOCKS_PER_SECOND   => 100_000_000,
-            BLINK_PERIOD_MS     => 100,
-            MAX_SECONDS         => 5
+            SIMULATION_MODE     => TRUE
         )
         PORT MAP (
             CLK100MHZ       => CLK,
@@ -64,26 +63,26 @@ BEGIN
     STIM_PROC : PROCESS
     BEGIN
         -- Wait for global reset
-        REPORT "Starting simulation..." SEVERITY NOTE;
+        LOG("Starting simulation...", "INFO");
         WAIT FOR 100 NS;
 
         -------------------------------------------------------------------
         -- Reset
         -------------------------------------------------------------------
-        REPORT "Resetting system: Expect transition to IDLE" SEVERITY NOTE;
+        LOG("Resetting system: Expect transition to IDLE: Expect FSM_STATE = 000", "INFO");
         BTN_RESET <= '1';
         WAIT FOR 20 NS;
         BTN_RESET <= '0';
         WAIT FOR 100 NS;
 
         -- Assert FSM is in IDLE (FSM_STATE = "000")
-        ASSERT FSM_STATE_OUT = "000"
-            REPORT "FSM did not transition to IDLE after reset!" SEVERITY ERROR;
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "000");
+        LOG("System reset successful", "INFO");
 
         -------------------------------------------------------------------
         -- Password Setup (FSM_STATE = "001")
         -------------------------------------------------------------------
-        REPORT "Entering Password Setup Mode: Expect FSM_STATE = 001" SEVERITY NOTE;
+        LOG("Entering Password Setup Mode: Expect FSM_STATE = 001", "INFO");
         SW_PASS <= "0000001111"; -- Example password: 15
         BTN_SETUP <= '1';
         WAIT FOR 20 NS;
@@ -91,34 +90,220 @@ BEGIN
         WAIT FOR 500 NS;
         
         -- Assert FSM is in Password Setup (FSM_STATE = "001")
-        ASSERT FSM_STATE_OUT = "001"
-            REPORT "FSM did not enter Password Setup state!" SEVERITY ERROR;
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "001");
+        LOG("Transition to Password setup mode from Idle successful", "INFO");
 
         -------------------------------------------------------------------
         -- Password Setup to Idle (FSM_STATE = "000")
         -------------------------------------------------------------------
-        REPORT "Entering Idle state from Password Setup Mode: Expect FSM_STATE = 000" SEVERITY NOTE;
-        SW_PASS <= "0000000000"; -- reset SW input
+        LOG("Entering Idle state from Password Setup Mode: Expect FSM_STATE = 000", "INFO");
         BTN_SETUP <= '1';
         WAIT FOR 20 NS;
         BTN_SETUP <= '0';
         WAIT FOR 500 NS;
+        SW_PASS <= "0000000000"; -- reset SW input
         
         -- Assert FSM is in Idle (FSM_STATE = "000")
-        ASSERT FSM_STATE_OUT = "000"
-            REPORT "FSM did not enter Idle state!" SEVERITY ERROR;
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "000");
+        LOG("Transition to Idle from Password setup successful", "INFO");
 
 
+        -------------------------------------------------------------------
+        -- Armed (FSM_STATE = "010")
+        -------------------------------------------------------------------
+        LOG("Arming the system: Expect FSM_STATE = 010", "INFO");
+        BTN_ARM <= '1';
+        WAIT FOR 20 NS;
+        BTN_ARM <= '0';
+        WAIT FOR 500 NS;
+        
+        -- Assert FSM is in Idle (FSM_STATE = "010")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "010");
+        LOG("System arm successful", "INFO");
 
+        -------------------------------------------------------------------
+        -- Door open (FSM_STATE = "011")
+        -------------------------------------------------------------------
+        LOG("Entering door open mode: Expect FSM_STATE = 011", "INFO");
+        BTN_DOOR <= '1';
+        WAIT FOR 20 NS;
+        BTN_DOOR <= '0';
+        WAIT FOR 500 NS;
+        
+        -- Assert FSM is in Door open (FSM_STATE = "011")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "011");
+        LOG("Transition to Door open successful", "INFO");
 
+        -------------------------------------------------------------------
+        -- Send correct password, transition to Idle (FSM_STATE = "000")
+        -------------------------------------------------------------------
+        LOG("Sending correct password: Expect FSM_STATE = 000", "INFO");
+        SW_PASS <= "0000001111"; -- Example password: 15
+        WAIT FOR 20 NS;
+        BTN_SEND <= '1';
+        WAIT FOR 20 NS;
+        BTN_SEND <= '0';
+        WAIT FOR 500 NS;
+        SW_PASS <= "0000000000"; -- Reset password
+        
+        -- Assert FSM is in Idle (FSM_STATE = "000")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "000");
+        LOG("Transition to Idle from Door open with correct password successful", "INFO");
+        
+        -------------------------------------------------------------------
+        -- Standart procedure works!
+        -------------------------------------------------------------------
+        LOG("Standart lock-unlock procedure works as expected!", "INFO");
+        LOG("Testing 3 incorrect password attempts", "INFO");
+        
+        -------------------------------------------------------------------
+        -- Armed (FSM_STATE = "010")
+        -------------------------------------------------------------------
+        LOG("Arming the system: Expect FSM_STATE = 010", "INFO");
+        BTN_ARM <= '1';
+        WAIT FOR 20 NS;
+        BTN_ARM <= '0';
+        WAIT FOR 500 NS;
+        
+        -- Assert FSM is in Idle (FSM_STATE = "010")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "010");
+        LOG("System armed", "INFO");
 
+        -------------------------------------------------------------------
+        -- Door open (FSM_STATE = "011")
+        -------------------------------------------------------------------
+        LOG("Entering door open mode: Expect FSM_STATE = 011", "INFO");
+        BTN_DOOR <= '1';
+        WAIT FOR 20 NS;
+        BTN_DOOR <= '0';
+        WAIT FOR 500 NS;
+        
+        -- Assert FSM is in Door open (FSM_STATE = "011")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "011");
+        LOG("Transition to Door open successful", "INFO");
 
+        -------------------------------------------------------------------
+        -- Send incorrect password#1, stay in the same state (FSM_STATE = "011")
+        -------------------------------------------------------------------
+        LOG("Sending incorrect password#1: Expect FSM_STATE = 011", "INFO");
+        SW_PASS <= "0000000001"; -- Example incorrect password: 1
+        WAIT FOR 20 NS;
+        BTN_SEND <= '1';
+        WAIT FOR 20 NS;
+        BTN_SEND <= '0';
+        WAIT FOR 500 NS;
+        SW_PASS <= "0000000000"; -- Reset password
+        
+        -- Assert FSM is in Door open (FSM_STATE = "011")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "011");
+        
+        -- Assert LD1 is indicating wrong input count (LD1 = '1')
+        CHECK_SIGNAL("LD1", LD1, '1');
 
+        LOG("Incorrect password#1 check", "INFO");
+        
+        -------------------------------------------------------------------
+        -- Send incorrect password#2, stay in the same state (FSM_STATE = "011")
+        -------------------------------------------------------------------
+        LOG("Sending incorrect password#2: Expect FSM_STATE = 011", "INFO");
+        SW_PASS <= "0000000011"; -- Example incorrect password: 3
+        WAIT FOR 20 NS;
+        BTN_SEND <= '1';
+        WAIT FOR 20 NS;
+        BTN_SEND <= '0';
+        WAIT FOR 500 NS;
+        SW_PASS <= "0000000000"; -- Reset password
+        
+        -- Assert FSM is in Door open (FSM_STATE = "011")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "011");
+        
+        -- Assert LD1 is indicating wrong input count (LD1 = '1')
+        CHECK_SIGNAL("LD1", LD1, '1');
+        
+        -- Assert LD2 is indicating wrong input count (LD2 = '1')
+        CHECK_SIGNAL("LD2", LD2, '1');
 
+        LOG("Incorrect password#2 check", "INFO");              
+            
+        -------------------------------------------------------------------
+        -- Send incorrect password#3, transition to Breach state (FSM_STATE = "100")
+        -------------------------------------------------------------------
+        LOG("Sending incorrect password#2: Expect FSM_STATE = 100", "INFO");
+        SW_PASS <= "0000000111"; -- Example incorrect password: 7
+        WAIT FOR 20 NS;
+        BTN_SEND <= '1';
+        WAIT FOR 20 NS;
+        BTN_SEND <= '0';
+        WAIT FOR 500 NS;
+        SW_PASS <= "0000000000"; -- Reset password
+        
+        -- Assert FSM is in Breach (FSM_STATE = "100")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "100");
+        LOG("Incorrect password#3 check, transition to Breach successful", "INFO"); 
+        
+        -------------------------------------------------------------------
+        -- Resetting system after breach, transition to Idle state (FSM_STATE = "000")
+        -------------------------------------------------------------------
+        LOG("Resetting: Expect FSM_STATE = 000", "INFO");
+        BTN_RESET <= '1';
+        WAIT FOR 20 NS;
+        BTN_RESET <= '0';
+        WAIT FOR 500 NS;
+        
+        -- Assert FSM is in Idle (FSM_STATE = "000")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "000");
+        LOG("System reset after Breach successful", "INFO");  
 
+        -------------------------------------------------------------------
+        -- Incorrect password handling procedure works!
+        -------------------------------------------------------------------
+        LOG("Incorrect password handling procedure works as expected!", "INFO");
+        LOG("Testing 30 second timeout", "INFO");
 
+        -------------------------------------------------------------------
+        -- Resetting system, transition to Idle state (FSM_STATE = "000")
+        -------------------------------------------------------------------
+        LOG("Resetting: Expect FSM_STATE = 000", "INFO");
+        BTN_RESET <= '1';
+        WAIT FOR 20 NS;
+        BTN_RESET <= '0';
+        WAIT FOR 500 NS;
+        
+        -- Assert FSM is in Idle (FSM_STATE = "000")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "000");
+        LOG("System reset successful", "INFO");  
 
-        REPORT "Simulation finished." SEVERITY NOTE;
+        -------------------------------------------------------------------
+        -- Armed (FSM_STATE = "010")
+        -------------------------------------------------------------------
+        LOG("Arming the system: Expect FSM_STATE = 010", "INFO");
+        BTN_ARM <= '1';
+        WAIT FOR 20 NS;
+        BTN_ARM <= '0';
+        WAIT FOR 500 NS;
+        
+        -- Assert FSM is in Idle (FSM_STATE = "010")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "010");
+        LOG("System armed", "INFO");
+
+        -------------------------------------------------------------------
+        -- Door open (FSM_STATE = "011")
+        -------------------------------------------------------------------
+        LOG("Entering door open mode: Expect FSM_STATE = 011", "INFO");
+        BTN_DOOR <= '1';
+        WAIT FOR 20 NS;
+        BTN_DOOR <= '0';
+        WAIT FOR 500 NS;
+        
+        -- Assert FSM is in Door open (FSM_STATE = "011")
+        CHECK_SIGNAL("FSM_STATE_OUT", FSM_STATE_OUT, "011");
+        LOG("Transition to Door open successful", "INFO");
+
+        
+        -- TODO: Scale counter
+        -- WAIT UNTIL FSM_STATE_OUT = "100"; -- Wait until counter finishes
+
+        LOG("Simulation finished!", "INFO");
         WAIT;
 
     END PROCESS;
