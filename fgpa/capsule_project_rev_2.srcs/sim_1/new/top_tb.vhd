@@ -30,7 +30,7 @@ BEGIN
     -- Instantiate DUT
     DUT: ENTITY WORK.TOP_LEVEL
         GENERIC MAP (
-            SIMULATION_MODE     => TRUE
+            SIMULATION_MODE => TRUE
         )
         PORT MAP (
             CLK100MHZ       => CLK,

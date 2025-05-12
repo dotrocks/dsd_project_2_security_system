@@ -5,7 +5,8 @@ USE IEEE.NUMERIC_STD.ALL;
 ENTITY LED_CONTROLLER IS 
     GENERIC ( 
         CLOCKS_PER_SECOND   : INTEGER := 100_000_000; 
-        BLINK_PERIOD_MS     : INTEGER := 500 
+        BLINK_PERIOD_MS     : INTEGER := 500;
+        SIMULATION_MODE     : BOOLEAN := FALSE
     ); 
     PORT ( 
         CLK     : IN  STD_LOGIC; 
@@ -15,13 +16,24 @@ ENTITY LED_CONTROLLER IS
 END LED_CONTROLLER; 
  
 ARCHITECTURE BEHAVIORAL OF LED_CONTROLLER IS 
-    -- Break down the calculation into smaller steps to avoid overflow
-    CONSTANT TICKS_PART_1 : INTEGER := CLOCKS_PER_SECOND / 1000;  -- Calculate frequency in kHz
-    CONSTANT TICKS_PART_2 : INTEGER := TICKS_PART_1 * BLINK_PERIOD_MS;  -- Now multiply by period in ms
-    CONSTANT BLINK_TOGGLE_TICKS : INTEGER := TICKS_PART_2;  -- Final result in clock cycles
+    -- Use a constant function to compute blink ticks with simulation support
+    FUNCTION compute_blink_ticks (
+        clk_per_sec : INTEGER;
+        period_ms   : INTEGER;
+        sim_mode    : BOOLEAN
+    ) RETURN INTEGER IS
+    BEGIN
+        IF sim_mode THEN
+            RETURN 10;  -- small number for quick blink in simulation
+        ELSE
+            RETURN (clk_per_sec / 1000) * period_ms;
+        END IF;
+    END FUNCTION;
+
+    CONSTANT BLINK_TOGGLE_TICKS : INTEGER := compute_blink_ticks(CLOCKS_PER_SECOND, BLINK_PERIOD_MS, SIMULATION_MODE);
     
-    SIGNAL BLINK_COUNTER        : INTEGER RANGE 0 TO BLINK_TOGGLE_TICKS-1 := 0;  
-    SIGNAL BLINK_STATE          : STD_LOGIC := '0'; 
+    SIGNAL BLINK_COUNTER : INTEGER RANGE 0 TO BLINK_TOGGLE_TICKS-1 := 0;  
+    SIGNAL BLINK_STATE   : STD_LOGIC := '0'; 
 BEGIN 
  
     PROCESS(CLK)
@@ -48,4 +60,4 @@ BEGIN
                    BLINK_STATE WHEN "10", 
                    '0'         WHEN OTHERS; -- DEFAULT OFF 
  
-END BEHAVIORAL; 
+END BEHAVIORAL;

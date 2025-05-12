@@ -162,7 +162,8 @@ BEGIN
     STATUS_LED_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
         GENERIC MAP ( 
             CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
-            BLINK_PERIOD_MS     => BLINK_PERIOD_MS
+            BLINK_PERIOD_MS     => BLINK_PERIOD_MS,
+            SIMULATION_MODE     => SIMULATION_MODE
         )
         PORT MAP (
             CLK     => CLK100MHZ,
@@ -172,7 +173,8 @@ BEGIN
     LD1_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
         GENERIC MAP ( 
             CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
-            BLINK_PERIOD_MS     => BLINK_PERIOD_MS
+            BLINK_PERIOD_MS     => BLINK_PERIOD_MS,
+            SIMULATION_MODE     => SIMULATION_MODE
         )
         PORT MAP (
             CLK     => CLK100MHZ,
@@ -182,7 +184,8 @@ BEGIN
     LD2_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
         GENERIC MAP ( 
             CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
-            BLINK_PERIOD_MS     => BLINK_PERIOD_MS
+            BLINK_PERIOD_MS     => BLINK_PERIOD_MS,
+            SIMULATION_MODE     => SIMULATION_MODE
         )
         PORT MAP (
             CLK     => CLK100MHZ,
@@ -209,7 +212,7 @@ BEGIN
     PROCESS(FSM_STATE, WRONG_COUNT)
     BEGIN
         CASE FSM_STATE IS
-            WHEN "000" => -- İdle state
+            WHEN "000" => -- Idle state
                 RESET_COUNTER   <= '1';
                 START_COUNTER   <= '0';
                 STATUS_LED_MODE <= "10"; -- 1Hz blink
@@ -218,8 +221,8 @@ BEGIN
             WHEN "001" => -- Setup password state
                 RESET_COUNTER   <= '1';
                 START_COUNTER   <= '0';
-                STATUS_LED_MODE <= "00"; -- Off
                 DISPLAY_DIGITS  <= BIN_TO_BCD(SAVED_PASSWORD);
+                STATUS_LED_MODE <= "00"; -- Off
                 LD1_MODE        <= "00"; -- Off
                 LD2_MODE        <= "00"; -- Off
             WHEN "010" => -- Armed state
