@@ -97,7 +97,13 @@ BEGIN
             END IF;
     
             IF LOAD_PASSWORD = '1' THEN
-                CURRENT_PASSWORD <= SW_PASS;
+            
+                -- Clamp SW_PASS to 999
+                IF SW_PASS > "1111100111" THEN
+                    CURRENT_PASSWORD <= "1111100111"; -- 999
+                ELSE
+                    CURRENT_PASSWORD <= SW_PASS;
+                END IF;
             END IF;
         END IF;
     END PROCESS;
