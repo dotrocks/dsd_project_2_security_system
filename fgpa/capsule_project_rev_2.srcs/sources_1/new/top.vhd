@@ -31,6 +31,7 @@ ENTITY TOP_LEVEL IS
         STATUS_LED      : OUT STD_LOGIC;
         LD1             : OUT STD_LOGIC;
         LD2             : OUT STD_LOGIC;
+        LD3             : OUT STD_LOGIC;
 
         -- 7 segment display
         ANODES          : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
@@ -55,6 +56,7 @@ ARCHITECTURE STRUCTURAL OF TOP_LEVEL IS
     SIGNAL STATUS_LED_MODE          : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "10";
     SIGNAL LD1_MODE                 : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
     SIGNAL LD2_MODE                 : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
+    SIGNAL LD3_MODE                 : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
 
     -- FSM states
     SIGNAL FSM_STATE                : STD_LOGIC_VECTOR(2 DOWNTO 0);
@@ -192,6 +194,18 @@ BEGIN
             MODE    => LD2_MODE,
             LED_OUT => LD2
         );
+    LD3_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
+        GENERIC MAP ( 
+            CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
+            BLINK_PERIOD_MS     => BLINK_PERIOD_MS,
+            SIMULATION_MODE     => SIMULATION_MODE
+        )
+        PORT MAP (
+            CLK     => CLK100MHZ,
+            MODE    => LD3_MODE,
+            LED_OUT => LD3
+        );
+
 
     -- Countdown timer
     COUNTDOWN_INST: ENTITY WORK.COUNTDOWN_TIMER
@@ -218,6 +232,7 @@ BEGIN
                 STATUS_LED_MODE <= "10"; -- 1Hz blink
                 LD1_MODE        <= "00"; -- Off
                 LD2_MODE        <= "00"; -- Off
+                LD3_MODE        <= "00"; -- Off
             WHEN "001" => -- Setup password state
                 RESET_COUNTER   <= '1';
                 START_COUNTER   <= '0';
@@ -225,12 +240,14 @@ BEGIN
                 STATUS_LED_MODE <= "00"; -- Off
                 LD1_MODE        <= "00"; -- Off
                 LD2_MODE        <= "00"; -- Off
+                LD3_MODE        <= "00"; -- Off
             WHEN "010" => -- Armed state
                 RESET_COUNTER   <= '0';
                 START_COUNTER   <= '0';
                 STATUS_LED_MODE <= "01"; -- On
                 LD1_MODE        <= "00"; -- Off
                 LD2_MODE        <= "00"; -- Off
+                LD3_MODE        <= "00"; -- Off
             WHEN "011" => -- Door open state
                 START_COUNTER   <= '1';
                 DISPLAY_DIGITS  <= COUNTER_DIGITS;
@@ -240,23 +257,28 @@ BEGIN
                     WHEN 0 => 
                         LD1_MODE <= "00"; -- Off
                         LD2_MODE <= "00"; -- Off
+                        LD3_MODE <= "00"; -- Off
                     WHEN 1 => 
                         LD1_MODE <= "01"; -- On
                         LD2_MODE <= "00"; -- Off
+                        LD3_MODE <= "00"; -- Off
                     WHEN 2 => 
                         LD1_MODE <= "01"; -- On
                         LD2_MODE <= "01"; -- On
+                        LD3_MODE <= "00"; -- Off
                     WHEN OTHERS => 
                         LD1_MODE <= "01"; -- On
                         LD2_MODE <= "01"; -- On
+                        LD3_MODE <= "01"; -- On
                 END CASE;
 
             WHEN "100" => -- Breach state
                 RESET_COUNTER   <= '1';
                 START_COUNTER   <= '0';
-                STATUS_LED_MODE <= "10"; -- 1Hz blink
+                STATUS_LED_MODE <= "01"; -- On
                 LD1_MODE        <= "10"; -- 1Hz blink
                 LD2_MODE        <= "10"; -- 1Hz blink
+                LD3_MODE        <= "10"; -- 1Hz blink
                 
             WHEN OTHERS => -- Any other state (extendable)
                 RESET_COUNTER   <= '1';
@@ -264,6 +286,7 @@ BEGIN
                 STATUS_LED_MODE <= "00"; -- Off
                 LD1_MODE        <= "00"; -- Off
                 LD2_MODE        <= "00"; -- Off
+                LD3_MODE        <= "00"; -- Off
         END CASE;
     END PROCESS;
     
