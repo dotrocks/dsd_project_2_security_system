@@ -1,295 +1,259 @@
-----------------------------------------------------------------------------------
--- Created at: 10.05.2025
--- Author: Barış DEMİRCİ <hi@338.rocks>
--- Description: Top module for security system
-----------------------------------------------------------------------------------
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
-LIBRARY IEEE;
-USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.NUMERIC_STD.ALL;
-
-ENTITY TOP_LEVEL IS
-    GENERIC (
-        CLOCKS_PER_SECOND   : INTEGER := 100_000_000;
-        BLINK_PERIOD_MS     : INTEGER := 500;
-        MAX_SECONDS         : INTEGER := 30;
-        SIMULATION_MODE     : BOOLEAN := FALSE
+entity top_level is
+    generic (
+        clocks_per_second : integer := 100_000_000;
+        blink_period_ms : integer := 500;
+        max_seconds : integer := 30;
+        simulation_mode : boolean := false
     );
-    PORT (
-        -- Internal 100MHz clock
-        CLK100MHZ       : IN STD_LOGIC;
-        
-        -- INPUTS
-        BTN_SETUP       : IN  STD_LOGIC; -- btnU
-        BTN_ARM         : IN  STD_LOGIC; -- btnD
-        BTN_RESET       : IN  STD_LOGIC; -- btnC
-        BTN_DOOR        : IN  STD_LOGIC; -- btnR
-        BTN_SEND        : IN  STD_LOGIC; -- btnL
-        SW_PASS         : IN  STD_LOGIC_VECTOR(9 DOWNTO 0);
-
-        -- LED outputs
-        STATUS_LED      : OUT STD_LOGIC;
-        LD1             : OUT STD_LOGIC;
-        LD2             : OUT STD_LOGIC;
-        LD3             : OUT STD_LOGIC;
-
-        -- 7 segment display
-        ANODES          : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
-        SEGMENTS        : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
-        
-        FSM_STATE_OUT   : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
+    port (
+        clk_in : in std_logic;
+        btn_setup : in std_logic;
+        btn_arm : in std_logic;
+        btn_reset : in std_logic;
+        btn_door : in std_logic;
+        btn_send : in std_logic;
+        sw_pass : in std_logic_vector(9 downto 0);
+        status_led : out std_logic;
+        ld1 : out std_logic;
+        ld2 : out std_logic;
+        ld3 : out std_logic;
+        anodes : out std_logic_vector(3 downto 0);
+        segments : out std_logic_vector(6 downto 0);
+        fsm_state_out : out std_logic_vector(2 downto 0)
     );
-END TOP_LEVEL;
+end top_level;
 
-ARCHITECTURE STRUCTURAL OF TOP_LEVEL IS
-    -- Internal password signal
-    SIGNAL SAVED_PASSWORD           : STD_LOGIC_VECTOR(9 DOWNTO 0);
-   
-    -- Debounced button signals
-    SIGNAL DEBOUNCED_BTN_SETUP      : STD_LOGIC;
-    SIGNAL DEBOUNCED_BTN_ARM        : STD_LOGIC;
-    SIGNAL DEBOUNCED_BTN_RESET      : STD_LOGIC;
-    SIGNAL DEBOUNCED_BTN_DOOR       : STD_LOGIC;
-    SIGNAL DEBOUNCED_BTN_SEND       : STD_LOGIC;
-    
-    -- LED signals
-    SIGNAL STATUS_LED_MODE          : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "10";
-    SIGNAL LD1_MODE                 : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
-    SIGNAL LD2_MODE                 : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
-    SIGNAL LD3_MODE                 : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
-
-    -- FSM states
-    SIGNAL FSM_STATE                : STD_LOGIC_VECTOR(2 DOWNTO 0);
-    
-    SIGNAL SECONDS_REMAIN           : INTEGER RANGE 0 TO 30;
-    SIGNAL DONE                     : STD_LOGIC;
-    SIGNAL START_COUNTER            : STD_LOGIC                     := '0';
-    SIGNAL COUNTER_DIGITS           : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL WRONG_COUNT              : INTEGER RANGE 0 TO 3          := 0;
-    SIGNAL DISPLAY_DIGITS           : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL RESET_COUNTER            : STD_LOGIC;
-    SIGNAL INTERNAL_COUNTER_RESET   : STD_LOGIC;
-    
-    FUNCTION BIN_TO_BCD(BIN_IN : STD_LOGIC_VECTOR(9 DOWNTO 0)) RETURN STD_LOGIC_VECTOR IS
-        VARIABLE I          : INTEGER;
-        VARIABLE THOUSANDS  : INTEGER;
-        VARIABLE HUNDREDS   : INTEGER;
-        VARIABLE TENS       : INTEGER;
-        VARIABLE ONES       : INTEGER;
-        VARIABLE BCD        : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    BEGIN
-        I           := TO_INTEGER(UNSIGNED(BIN_IN));
-        
-        THOUSANDS   := (I / 1000) MOD 10;
-        HUNDREDS    := (I / 100) MOD 10;
-        TENS        := (I / 10) MOD 10;
-        ONES        := I MOD 10;
-        
-        BCD         := STD_LOGIC_VECTOR(TO_UNSIGNED(THOUSANDS, 4))
-                     & STD_LOGIC_VECTOR(TO_UNSIGNED(HUNDREDS, 4)) 
-                     & STD_LOGIC_VECTOR(TO_UNSIGNED(TENS, 4)) 
-                     & STD_LOGIC_VECTOR(TO_UNSIGNED(ONES, 4));
-        
-        RETURN BCD;
-    END FUNCTION;
-
-BEGIN
-    -- Debounced buttons
-    DEBOUNCED_BTN_SETUP_INSTANCE: ENTITY WORK.BUTTON_DEBOUNCER
-        PORT MAP (
-            CLK     => CLK100MHZ,
-            BTN_IN  => BTN_SETUP,
-            BTN_OUT => DEBOUNCED_BTN_SETUP
+architecture structural of top_level is
+    signal saved_password : std_logic_vector(9 downto 0);
+    signal debounced_btn_setup : std_logic;
+    signal debounced_btn_arm : std_logic;
+    signal debounced_btn_reset : std_logic;
+    signal debounced_btn_door : std_logic;
+    signal debounced_btn_send : std_logic;
+    signal status_led_mode : std_logic_vector(1 downto 0) := "10";
+    signal ld1_mode : std_logic_vector(1 downto 0) := "00";
+    signal ld2_mode : std_logic_vector(1 downto 0) := "00";
+    signal ld3_mode : std_logic_vector(1 downto 0) := "00";
+    signal fsm_state : std_logic_vector(2 downto 0);
+    signal seconds_remain : integer range 0 to 30;
+    signal done : std_logic;
+    signal start_counter : std_logic := '0';
+    signal counter_digits : std_logic_vector(15 downto 0);
+    signal wrong_count : integer range 0 to 3 := 0;
+    signal display_digits : std_logic_vector(15 downto 0);
+    signal reset_counter : std_logic;
+    signal internal_counter_reset : std_logic;
+    function bin_to_bcd(bin_in : std_logic_vector(9 downto 0)) return std_logic_vector is
+        variable i : integer;
+        variable thousands : integer;
+        variable hundreds : integer;
+        variable tens : integer;
+        variable ones : integer;
+        variable bcd : std_logic_vector(15 downto 0);
+    begin
+        i := to_integer(unsigned(bin_in));
+        thousands := (i / 1000) mod 10;
+        hundreds := (i / 100) mod 10;
+        tens := (i / 10) mod 10;
+        ones := i mod 10;
+        bcd := std_logic_vector(to_unsigned(thousands, 4))
+        & std_logic_vector(to_unsigned(hundreds, 4)) 
+        & std_logic_vector(to_unsigned(tens, 4)) 
+        & std_logic_vector(to_unsigned(ones, 4));
+        return bcd;
+    end function;
+begin
+    debounced_btn_setup_instance: entity work.button_debouncer
+        port map (
+            clk => clk_in,
+            btn_in => btn_setup,
+            btn_out => debounced_btn_setup
         );
-    DEBOUNCED_BTN_RESET_INSTANCE: ENTITY WORK.BUTTON_DEBOUNCER
-        PORT MAP (
-            CLK     => CLK100MHZ,
-            BTN_IN  => BTN_RESET,
-            BTN_OUT => DEBOUNCED_BTN_RESET
+    debounced_btn_reset_instance: entity work.button_debouncer
+        port map (
+            clk => clk_in,
+            btn_in => btn_reset,
+            btn_out => debounced_btn_reset
         );
-    DEBOUNCED_BTN_ARM_INSTANCE: ENTITY WORK.BUTTON_DEBOUNCER
-        PORT MAP (
-            CLK     => CLK100MHZ,
-            BTN_IN  => BTN_ARM,
-            BTN_OUT => DEBOUNCED_BTN_ARM
+    debounced_btn_arm_instance: entity work.button_debouncer
+        port map (
+            clk => clk_in,
+            btn_in => btn_arm,
+            btn_out => debounced_btn_arm
         );
-    DEBOUNCED_BTN_DOOR_INSTANCE: ENTITY WORK.BUTTON_DEBOUNCER
-        PORT MAP (
-            CLK     => CLK100MHZ,
-            BTN_IN  => BTN_DOOR,
-            BTN_OUT => DEBOUNCED_BTN_DOOR
+    debounced_btn_door_instance: entity work.button_debouncer
+        port map (
+            clk => clk_in,
+            btn_in => btn_door,
+            btn_out => debounced_btn_door
         );
-    DEBOUNCED_BTN_SEND_INSTANCE: ENTITY WORK.BUTTON_DEBOUNCER
-        PORT MAP (
-            CLK     => CLK100MHZ,
-            BTN_IN  => BTN_SEND,
-            BTN_OUT => DEBOUNCED_BTN_SEND
+    debounced_btn_send_instance: entity work.button_debouncer
+        port map (
+            clk => clk_in,
+            btn_in => btn_send,
+            btn_out => debounced_btn_send
         );
 
-    -- FSM controller
-    FSM_INST: ENTITY WORK.FSM_CONTROLLER
-        GENERIC MAP (
-            CLOCKS_PER_SECOND => CLOCKS_PER_SECOND
+    fsm_inst: entity work.fsm_controller
+        generic map (
+            clocks_per_second => clocks_per_second,
+            simulation_mode => simulation_mode
         )
-        PORT MAP (
-            CLK             => CLK100MHZ,
+        port map (
+            clk => clk_in,
+            reset => debounced_btn_reset,
+            btn_setup => debounced_btn_setup,
+            btn_arm => debounced_btn_arm,
+            btn_door => debounced_btn_door,
+            btn_send => debounced_btn_send,
+            sw_pass => sw_pass,
+            saved_password => saved_password,
+            wrong_count => wrong_count,
+            state => fsm_state,
+            current_seconds => seconds_remain
+        );
+
+    seven_seg_inst: entity work.seven_segment_mux
+        port map (
+            clk => clk_in,
+            digits => display_digits,
+            fsm_state => fsm_state,
+            enable => '1',
+            anodes => anodes,
+            segments => segments
+        );
+
+    status_led_controller_inst: entity work.led_controller
+        generic map ( 
+            clocks_per_second => clocks_per_second,
+            blink_period_ms => blink_period_ms,
+            simulation_mode => simulation_mode
+        )
+        port map (
+            clk => clk_in,
+            mode => status_led_mode,
+            led_out => status_led
+        );
+
+    ld1_controller_inst: entity work.led_controller
+        generic map ( 
+            clocks_per_second => clocks_per_second,
+            blink_period_ms => blink_period_ms,
+            simulation_mode => simulation_mode
+        )
+        port map (
+            clk => clk_in,
+            mode => ld1_mode,
+            led_out => ld1
+        );
+    ld2_controller_inst: entity work.led_controller
+        generic map ( 
+            clocks_per_second => clocks_per_second,
+            blink_period_ms => blink_period_ms,
+            simulation_mode => simulation_mode
+        )
+        port map (
+            clk => clk_in,
+            mode => ld2_mode,
+            led_out => ld2
+        );
+    ld3_controller_inst: entity work.led_controller
+        generic map ( 
+            clocks_per_second => clocks_per_second,
+            blink_period_ms => blink_period_ms,
+            simulation_mode => simulation_mode
+        )
+        port map (
+            clk => clk_in,
+            mode => ld3_mode,
+            led_out => ld3
+        );
+
+    countdown_inst: entity work.countdown_timer
+        generic map (
+            clocks_per_second => clocks_per_second,
+            max_seconds => max_seconds,
+            simulation_mode => simulation_mode
+        )
+        port map (
+            clk => clk_in,
+            reset => internal_counter_reset,
+            digits => counter_digits,
+            done => done,
+            start => start_counter
+        );
+
+    process(fsm_state, wrong_count)
+    begin
+        case fsm_state is
+            when "000" =>
+                reset_counter <= '1';
+                start_counter <= '0';
+                status_led_mode <= "10";
+                ld1_mode <= "00";
+                ld2_mode <= "00";
+                ld3_mode <= "00";
+            when "001" =>
+                reset_counter <= '1';
+                start_counter <= '0';
+                display_digits <= bin_to_bcd(saved_password);
+                status_led_mode <= "00";
+                ld1_mode <= "00";
+                ld2_mode <= "00";
+                ld3_mode <= "00";
+            when "010" =>
+                reset_counter <= '0';
+                start_counter <= '0';
+                status_led_mode <= "01";
+                ld1_mode <= "00";
+                ld2_mode <= "00";
+                ld3_mode <= "00";
+            when "011" =>
+                start_counter <= '1';
+                display_digits <= bin_to_bcd(sw_pass);
+                status_led_mode <= "01";
             
-            RESET           => DEBOUNCED_BTN_RESET,
-            BTN_SETUP       => DEBOUNCED_BTN_SETUP,
-            BTN_ARM         => DEBOUNCED_BTN_ARM,
-            BTN_DOOR        => DEBOUNCED_BTN_DOOR,
-            BTN_SEND        => DEBOUNCED_BTN_SEND,
-            
-            SW_PASS         => SW_PASS,
-            SAVED_PASSWORD  => SAVED_PASSWORD,
-            
-            WRONG_COUNT     => WRONG_COUNT,
+            case wrong_count is
+                when 0 => 
+                    ld1_mode <= "00";
+                    ld2_mode <= "00";
+                    ld3_mode <= "00";
+                when 1 => 
+                    ld1_mode <= "01";
+                    ld2_mode <= "00";
+                    ld3_mode <= "00";
+                when 2 => 
+                    ld1_mode <= "01";
+                    ld2_mode <= "01";
+                    ld3_mode <= "00";
+                when others => 
+                    ld1_mode <= "01";
+                    ld2_mode <= "01";
+                    ld3_mode <= "01";
+            end case;
 
-            STATE           => FSM_STATE,
-            CURRENT_SECONDS => SECONDS_REMAIN
-        );
-
-    -- Seven-segment display decoder
-    SEVEN_SEG_INST: ENTITY WORK.SEVEN_SEGMENT_MUX
-        PORT MAP (
-            CLK         => CLK100MHZ,
-            DIGITS      => DISPLAY_DIGITS,
-            FSM_STATE   => FSM_STATE,
-            ENABLE      => '1',
-            ANODES      => ANODES,
-            SEGMENTS    => SEGMENTS
-        );
-        
-    -- LED controllers
-    STATUS_LED_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
-        GENERIC MAP ( 
-            CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
-            BLINK_PERIOD_MS     => BLINK_PERIOD_MS,
-            SIMULATION_MODE     => SIMULATION_MODE
-        )
-        PORT MAP (
-            CLK     => CLK100MHZ,
-            MODE    => STATUS_LED_MODE,
-            LED_OUT => STATUS_LED
-        );
-    LD1_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
-        GENERIC MAP ( 
-            CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
-            BLINK_PERIOD_MS     => BLINK_PERIOD_MS,
-            SIMULATION_MODE     => SIMULATION_MODE
-        )
-        PORT MAP (
-            CLK     => CLK100MHZ,
-            MODE    => LD1_MODE,
-            LED_OUT => LD1
-        );
-    LD2_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
-        GENERIC MAP ( 
-            CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
-            BLINK_PERIOD_MS     => BLINK_PERIOD_MS,
-            SIMULATION_MODE     => SIMULATION_MODE
-        )
-        PORT MAP (
-            CLK     => CLK100MHZ,
-            MODE    => LD2_MODE,
-            LED_OUT => LD2
-        );
-    LD3_CONTROLLER_INST: ENTITY WORK.LED_CONTROLLER
-        GENERIC MAP ( 
-            CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
-            BLINK_PERIOD_MS     => BLINK_PERIOD_MS,
-            SIMULATION_MODE     => SIMULATION_MODE
-        )
-        PORT MAP (
-            CLK     => CLK100MHZ,
-            MODE    => LD3_MODE,
-            LED_OUT => LD3
-        );
-
-
-    -- Countdown timer
-    COUNTDOWN_INST: ENTITY WORK.COUNTDOWN_TIMER
-        GENERIC MAP (
-            CLOCKS_PER_SECOND   => CLOCKS_PER_SECOND,
-            MAX_SECONDS         => MAX_SECONDS,
-            SIMULATION_MODE     => SIMULATION_MODE
-        )
-        PORT MAP (
-            CLK     => CLK100MHZ,
-            RESET   => INTERNAL_COUNTER_RESET,
-            DIGITS  => COUNTER_DIGITS,
-            DONE    => DONE,
-            START   => START_COUNTER
-        );
-
-    -- Control which message will be shown on the 7 segment display and status LED according to FSM state
-    PROCESS(FSM_STATE, WRONG_COUNT)
-    BEGIN
-        CASE FSM_STATE IS
-            WHEN "000" => -- Idle state
-                RESET_COUNTER   <= '1';
-                START_COUNTER   <= '0';
-                STATUS_LED_MODE <= "10"; -- 1Hz blink
-                LD1_MODE        <= "00"; -- Off
-                LD2_MODE        <= "00"; -- Off
-                LD3_MODE        <= "00"; -- Off
-            WHEN "001" => -- Setup password state
-                RESET_COUNTER   <= '1';
-                START_COUNTER   <= '0';
-                DISPLAY_DIGITS  <= BIN_TO_BCD(SAVED_PASSWORD);
-                STATUS_LED_MODE <= "00"; -- Off
-                LD1_MODE        <= "00"; -- Off
-                LD2_MODE        <= "00"; -- Off
-                LD3_MODE        <= "00"; -- Off
-            WHEN "010" => -- Armed state
-                RESET_COUNTER   <= '0';
-                START_COUNTER   <= '0';
-                STATUS_LED_MODE <= "01"; -- On
-                LD1_MODE        <= "00"; -- Off
-                LD2_MODE        <= "00"; -- Off
-                LD3_MODE        <= "00"; -- Off
-            WHEN "011" => -- Door open state
-                START_COUNTER   <= '1';
-                DISPLAY_DIGITS  <= BIN_TO_BCD(SW_PASS);
-                STATUS_LED_MODE <= "01"; -- On
+            when "100" =>
+                reset_counter <= '1';
+                start_counter <= '0';
+                status_led_mode <= "01"; 
+                ld1_mode <= "10";
+                ld2_mode <= "10";
+                ld3_mode <= "10";
                 
-                CASE WRONG_COUNT IS
-                    WHEN 0 => 
-                        LD1_MODE <= "00"; -- Off
-                        LD2_MODE <= "00"; -- Off
-                        LD3_MODE <= "00"; -- Off
-                    WHEN 1 => 
-                        LD1_MODE <= "01"; -- On
-                        LD2_MODE <= "00"; -- Off
-                        LD3_MODE <= "00"; -- Off
-                    WHEN 2 => 
-                        LD1_MODE <= "01"; -- On
-                        LD2_MODE <= "01"; -- On
-                        LD3_MODE <= "00"; -- Off
-                    WHEN OTHERS => 
-                        LD1_MODE <= "01"; -- On
-                        LD2_MODE <= "01"; -- On
-                        LD3_MODE <= "01"; -- On
-                END CASE;
-
-            WHEN "100" => -- Breach state
-                RESET_COUNTER   <= '1';
-                START_COUNTER   <= '0';
-                STATUS_LED_MODE <= "01"; -- On
-                LD1_MODE        <= "10"; -- 1Hz blink
-                LD2_MODE        <= "10"; -- 1Hz blink
-                LD3_MODE        <= "10"; -- 1Hz blink
-                
-            WHEN OTHERS => -- Any other state (extendable)
-                RESET_COUNTER   <= '1';
-                START_COUNTER   <= '0';
-                STATUS_LED_MODE <= "00"; -- Off
-                LD1_MODE        <= "00"; -- Off
-                LD2_MODE        <= "00"; -- Off
-                LD3_MODE        <= "00"; -- Off
-        END CASE;
-    END PROCESS;
+            when others =>
+                reset_counter <= '1';
+                start_counter <= '0';
+                status_led_mode <= "00"; 
+                ld1_mode <= "00";
+                ld2_mode <= "00";
+                ld3_mode <= "00";
+        end case;
+    end process;
     
-    INTERNAL_COUNTER_RESET <= DEBOUNCED_BTN_RESET OR RESET_COUNTER;
-    FSM_STATE_OUT <= FSM_STATE;
-END STRUCTURAL;
+    internal_counter_reset <= debounced_btn_reset or reset_counter;
+    fsm_state_out <= fsm_state;
+end structural;

@@ -1,126 +1,120 @@
-----------------------------------------------------------------------------------
--- Created at: 10.05.2025
--- Author: Barış DEMİRCİ <hi@338.rocks>
--- Description: 7 segment decoder for finite state machine
-----------------------------------------------------------------------------------
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
-LIBRARY IEEE;
-USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.NUMERIC_STD.ALL;
-
-ENTITY SEVEN_SEGMENT_MUX IS
-    PORT (
-        CLK         : IN  STD_LOGIC;
-        DIGITS      : IN  STD_LOGIC_VECTOR(15 DOWNTO 0); -- 4 digits, 4-bit each
-        FSM_STATE   : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
-        ENABLE      : IN  STD_LOGIC;
-        ANODES      : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
-        SEGMENTS    : OUT STD_LOGIC_VECTOR(6 DOWNTO 0)
+entity seven_segment_mux is
+    port (
+        clk : in std_logic;
+        digits : in std_logic_vector(15 downto 0);
+        fsm_state : in std_logic_vector(2 downto 0);
+        enable : in std_logic;
+        anodes : out std_logic_vector(3 downto 0);
+        segments : out std_logic_vector(6 downto 0)
     );
-END SEVEN_SEGMENT_MUX;
+end seven_segment_mux;
 
-ARCHITECTURE BEHAVIORAL OF SEVEN_SEGMENT_MUX IS
-    SIGNAL REFRESH_COUNTER  : UNSIGNED(19 DOWNTO 0)         := (OTHERS => '0');
-    SIGNAL DIGIT_INDEX      : UNSIGNED(1 DOWNTO 0);
-    SIGNAL DIGIT_VAL        : STD_LOGIC_VECTOR(3 DOWNTO 0);
+architecture behavioral of seven_segment_mux is
+    signal refresh_counter : unsigned(19 downto 0) := (others => '0');
+    signal digit_index : unsigned(1 downto 0);
+    signal digit_val : std_logic_vector(3 downto 0);
 
-    FUNCTION ENCODE_7SEG(BCD : STD_LOGIC_VECTOR(3 DOWNTO 0)) RETURN STD_LOGIC_VECTOR IS
-        VARIABLE SEG : STD_LOGIC_VECTOR(6 DOWNTO 0);
-    BEGIN
-        CASE BCD IS
-            WHEN "0000" => SEG := "1000000"; -- 0
-            WHEN "0001" => SEG := "1111001"; -- 1
-            WHEN "0010" => SEG := "0100100"; -- 2
-            WHEN "0011" => SEG := "0110000"; -- 3
-            WHEN "0100" => SEG := "0011001"; -- 4
-            WHEN "0101" => SEG := "0010010"; -- 5
-            WHEN "0110" => SEG := "0000010"; -- 6
-            WHEN "0111" => SEG := "1111000"; -- 7
-            WHEN "1000" => SEG := "0000000"; -- 8
-            WHEN "1001" => SEG := "0010000"; -- 9
-            WHEN OTHERS => SEG := "1111111"; -- BLANK
-        END CASE;
+    function encode_7seg(bcd : std_logic_vector(3 downto 0)) return std_logic_vector is
+        variable seg : std_logic_vector(6 downto 0);
+    begin
+        case bcd is
+            when "0000" => seg := "1000000";
+            when "0001" => seg := "1111001";
+            when "0010" => seg := "0100100";
+            when "0011" => seg := "0110000";
+            when "0100" => seg := "0011001";
+            when "0101" => seg := "0010010";
+            when "0110" => seg := "0000010";
+            when "0111" => seg := "1111000";
+            when "1000" => seg := "0000000";
+            when "1001" => seg := "0010000";
+            when others => seg := "1111111";
+        end case;
         
-        RETURN SEG;
-    END FUNCTION;
-BEGIN
-    PROCESS(CLK)
-    BEGIN
-        IF RISING_EDGE(CLK) THEN
-            REFRESH_COUNTER <= REFRESH_COUNTER + 1;
-            DIGIT_INDEX     <= REFRESH_COUNTER(19 DOWNTO 18);
-        END IF;
-    END PROCESS;
+        return seg;
+    end function;
+begin
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            refresh_counter <= refresh_counter + 1;
+            digit_index <= refresh_counter(19 downto 18);
+        end if;
+    end process;
 
-    PROCESS(DIGIT_INDEX, DIGITS, ENABLE, FSM_STATE)
-    BEGIN
-        IF ENABLE = '1' THEN
-            IF FSM_STATE = "001" OR FSM_STATE = "011" THEN -- Password setup or door open
-                CASE DIGIT_INDEX IS
-                    WHEN "00" =>
-                        ANODES      <= "1110";
-                        DIGIT_VAL   <= DIGITS(3 DOWNTO 0);
-                    WHEN "01" =>
-                        ANODES      <= "1101";
-                        DIGIT_VAL   <= DIGITS(7 DOWNTO 4);
-                    WHEN "10" =>
-                        ANODES      <= "1011";
-                        DIGIT_VAL   <= DIGITS(11 DOWNTO 8);
-                    WHEN OTHERS =>
-                        ANODES      <= "0111";
-                        DIGIT_VAL   <= DIGITS(15 DOWNTO 12);
-                END CASE;
+    process(digit_index, digits, enable, fsm_state)
+    begin
+        if enable = '1' then
+            if fsm_state = "001" or fsm_state = "011" then
+                case digit_index is
+                    when "00" =>
+                        anodes <= "1110";
+                        digit_val <= digits(3 downto 0);
+                    when "01" =>
+                        anodes <= "1101";
+                        digit_val <= digits(7 downto 4);
+                    when "10" =>
+                        anodes <= "1011";
+                        digit_val <= digits(11 downto 8);
+                    when others =>
+                        anodes <= "0111";
+                        digit_val <= digits(15 downto 12);
+                end case;
     
-                SEGMENTS <= ENCODE_7SEG(DIGIT_VAL);
-            ELSIF FSM_STATE = "000" THEN -- Idle
-                CASE DIGIT_INDEX IS
-                    WHEN "00" =>
-                        ANODES      <= "1110";
-                        SEGMENTS    <= "0000110"; -- E
-                    WHEN "01" =>
-                        ANODES      <= "1101";
-                        SEGMENTS    <= "1000111"; -- L
-                    WHEN "10" =>
-                        ANODES      <= "1011";
-                        SEGMENTS    <= "0100001"; -- D
-                    WHEN OTHERS =>
-                        ANODES      <= "0111";
-                        SEGMENTS    <= "1111001"; -- I
-                END CASE;
-            ELSIF FSM_STATE = "010" THEN -- Armed
-                CASE DIGIT_INDEX IS
-                    WHEN "00" =>
-                        ANODES      <= "1110";
-                        SEGMENTS    <= "1101010"; -- M
-                    WHEN "01" =>
-                        ANODES      <= "1101";
-                        SEGMENTS    <= "1001110"; -- R
-                    WHEN "10" =>
-                        ANODES      <= "1011";
-                        SEGMENTS    <= "0001000"; -- A
-                    WHEN OTHERS =>
-                        ANODES      <= "0111";
-                        SEGMENTS    <= "1111111"; -- OFF
-                END CASE;
-            ELSIF FSM_STATE = "100" THEN -- Breach
-                CASE DIGIT_INDEX IS
-                    WHEN "00" =>
-                        ANODES      <= "1110";
-                        SEGMENTS    <= "0001001"; -- X
-                    WHEN "01" =>
-                        ANODES      <= "1101";
-                        SEGMENTS    <= "0001001"; -- X
-                    WHEN "10" =>
-                        ANODES      <= "1011";
-                        SEGMENTS    <= "0001001"; -- X
-                    WHEN OTHERS =>
-                        ANODES      <= "0111";
-                        SEGMENTS    <= "0001001"; -- X
-                END CASE;
-            END IF;
-        ELSE
-            ANODES      <= "1111";
-            SEGMENTS    <= "1111111";
-        END IF;
-    END PROCESS;
-END BEHAVIORAL;
+                segments <= encode_7seg(digit_val);
+            elsif fsm_state = "000" then
+                case digit_index is
+                    when "00" =>
+                        anodes <= "1110";
+                        segments <= "0000110";
+                    when "01" =>
+                        anodes <= "1101";
+                        segments <= "1000111";
+                    when "10" =>
+                        anodes <= "1011";
+                        segments <= "0100001";
+                    when others =>
+                        anodes <= "0111";
+                        segments <= "1111001";
+                end case;
+            elsif fsm_state = "010" then
+                case digit_index is
+                    when "00" =>
+                        anodes <= "1110";
+                        segments <= "1101010";
+                    when "01" =>
+                        anodes <= "1101";
+                        segments <= "1001110";
+                    when "10" =>
+                        anodes <= "1011";
+                        segments <= "0001000";
+                    when others =>
+                        anodes <= "0111";
+                        segments <= "1111111";
+                end case;
+            elsif fsm_state = "100" then
+                case digit_index is
+                    when "00" =>
+                        anodes <= "1110";
+                        segments <= "0001001";
+                    when "01" =>
+                        anodes <= "1101";
+                        segments <= "0001001";
+                    when "10" =>
+                        anodes <= "1011";
+                        segments <= "0001001";
+                    when others =>
+                        anodes <= "0111";
+                        segments <= "0001001";
+                end case;
+            end if;
+        else
+            anodes <= "1111";
+            segments <= "1111111";
+        end if;
+    end process;
+end behavioral;
