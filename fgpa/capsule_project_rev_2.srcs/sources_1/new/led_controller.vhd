@@ -1,56 +1,63 @@
-library ieee; 
-use ieee.std_logic_1164.all; 
-use ieee.numeric_std.all; 
+LIBRARY IEEE; 
+USE IEEE.STD_LOGIC_1164.ALL; 
+USE IEEE.NUMERIC_STD.ALL; 
 
-entity led_controller is 
-    generic ( 
-        clocks_per_second : integer := 100_000_000; 
-        blink_period_ms : integer := 500;
-        simulation_mode : boolean := false
+ENTITY LED_CONTROLLER IS 
+    GENERIC ( 
+        CLOCKS_PER_SECOND   : INTEGER := 100_000_000; 
+        BLINK_PERIOD_MS     : INTEGER := 500;
+        SIMULATION_MODE     : BOOLEAN := FALSE
     ); 
-    port ( 
-        clk : in std_logic; 
-        mode : in std_logic_vector(1 downto 0);
-        led_out : out std_logic 
+    PORT ( 
+        CLK     : IN  STD_LOGIC; 
+        MODE    : IN  STD_LOGIC_VECTOR(1 DOWNTO 0); -- 00=OFF, 01=ON, 10=BLINK 
+        LED_OUT : OUT STD_LOGIC 
     ); 
-end led_controller; 
+END LED_CONTROLLER; 
 
-architecture behavioral of led_controller is 
-    function compute_blink_ticks (
-        clk_per_sec : integer;
-        period_ms : integer;
-        sim_mode : boolean
-    ) return integer is
-    begin
-        if sim_mode then
-            return 10;
-        else
-            return (clk_per_sec / 1000) * period_ms;
-        end if;
-    end function;
+ARCHITECTURE BEHAVIORAL OF LED_CONTROLLER IS 
+    -- Use a constant function to compute blink ticks with simulation support
+    FUNCTION compute_blink_ticks (
+        clk_per_sec : INTEGER;
+        period_ms   : INTEGER;
+        sim_mode    : BOOLEAN
+    ) RETURN INTEGER IS
+    BEGIN
+        IF sim_mode THEN
+            RETURN 10;  -- small number for quick blink in simulation
+        ELSE
+            RETURN (clk_per_sec / 1000) * period_ms;
+        END IF;
+    END FUNCTION;
 
-    constant blink_toggle_ticks : integer := compute_blink_ticks(clocks_per_second, blink_period_ms, simulation_mode);
-    signal blink_counter : integer range 0 to blink_toggle_ticks-1 := 0;  
-    signal blink_state : std_logic := '0'; 
-begin 
+    CONSTANT BLINK_TOGGLE_TICKS : INTEGER := compute_blink_ticks(CLOCKS_PER_SECOND, BLINK_PERIOD_MS, SIMULATION_MODE);
+    
+    SIGNAL BLINK_COUNTER : INTEGER RANGE 0 TO BLINK_TOGGLE_TICKS-1 := 0;  
+    SIGNAL BLINK_STATE   : STD_LOGIC := '0'; 
+BEGIN 
 
-    process(clk)
-    begin 
-        if rising_edge(clk) then 
-            if mode = "10" then
-                if blink_counter < blink_toggle_ticks - 1 then 
-                    blink_counter <= blink_counter + 1; 
-                else 
-                    blink_counter <= 0;
-                    blink_state <= not blink_state; 
-                end if; 
-            else 
-                blink_counter <= 0;
-                blink_state <= '0'; 
-            end if; 
-        end if; 
-    end process; 
+    PROCESS(CLK)
+    BEGIN 
+        IF RISING_EDGE(CLK) THEN 
+            IF MODE = "10" THEN  -- BLINK 
+                IF BLINK_COUNTER < BLINK_TOGGLE_TICKS - 1 THEN 
+                    BLINK_COUNTER <= BLINK_COUNTER + 1; 
+                ELSE 
+                    BLINK_COUNTER <= 0;  -- Reset counter
+                    BLINK_STATE <= NOT BLINK_STATE; 
+                END IF; 
+            ELSE 
+                BLINK_COUNTER <= 0;  -- Reset counter for OFF or ON modes
+                BLINK_STATE <= '0'; 
+            END IF; 
+        END IF; 
+    END PROCESS; 
 
-    with mode select 
-        led_out <= '0' when "00", '1' when "01", blink_state when "10", '0' when others;
-end behavioral;
+    -- OUTPUT LOGIC
+    WITH MODE SELECT 
+        LED_OUT <= '0'         WHEN "00",   -- OFF 
+                   '1'         WHEN "01",   -- ON 
+                   BLINK_STATE WHEN "10", 
+                   '0'         WHEN OTHERS; -- DEFAULT OFF 
+
+END BEHAVIORAL;
