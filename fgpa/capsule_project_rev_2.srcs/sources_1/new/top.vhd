@@ -250,7 +250,7 @@ BEGIN
                 LD3_MODE        <= "00"; -- Off
             WHEN "011" => -- Door open state
                 START_COUNTER   <= '1';
-                DISPLAY_DIGITS  <= COUNTER_DIGITS;
+                DISPLAY_DIGITS  <= BIN_TO_BCD(SW_PASS);
                 STATUS_LED_MODE <= "01"; -- On
                 
                 CASE WRONG_COUNT IS
