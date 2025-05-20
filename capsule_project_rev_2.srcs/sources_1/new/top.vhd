@@ -1,9 +1,4 @@
-----------------------------------------------------------------------------------
--- Created at: 10.05.2025
--- Author: Barış DEMİRCİ <hi@338.rocks>
--- Description: Top module for security system
-----------------------------------------------------------------------------------
-
+-- barbarbar338
 LIBRARY IEEE;
 USE IEEE.STD_LOGIC_1164.ALL;
 USE IEEE.NUMERIC_STD.ALL;
@@ -44,7 +39,7 @@ END TOP_LEVEL;
 ARCHITECTURE STRUCTURAL OF TOP_LEVEL IS
     -- Internal password signal
     SIGNAL SAVED_PASSWORD           : STD_LOGIC_VECTOR(9 DOWNTO 0);
-   
+
     -- Debounced button signals
     SIGNAL DEBOUNCED_BTN_SETUP      : STD_LOGIC;
     SIGNAL DEBOUNCED_BTN_ARM        : STD_LOGIC;
@@ -294,3 +289,4 @@ BEGIN
     INTERNAL_COUNTER_RESET <= DEBOUNCED_BTN_RESET OR RESET_COUNTER;
     FSM_STATE_OUT <= FSM_STATE;
 END STRUCTURAL;
+-- barbarbar338
