@@ -1,32 +1,34 @@
-library ieee;
-use ieee.std_logic_1164.all;
+-- barbarbar338
+LIBRARY IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
 
-entity button_debouncer is
-    port (
-        clk : in std_logic;
-        btn_in : in std_logic;
-        btn_out : out std_logic
+ENTITY BUTTON_DEBOUNCER IS
+    PORT (
+        CLK     : IN  STD_LOGIC;
+        BTN_IN  : IN  STD_LOGIC;
+        BTN_OUT : OUT STD_LOGIC
     );
-end button_debouncer;
+END BUTTON_DEBOUNCER;
 
-architecture behavioral of button_debouncer is
-    signal button_sync : std_logic := '1';
-    signal button_prev : std_logic := '1';
-    signal impulse_internal : std_logic := '0';
-begin
+ARCHITECTURE BEHAVIORAL OF BUTTON_DEBOUNCER IS
+    SIGNAL BUTTON_SYNC      : STD_LOGIC := '1';
+    SIGNAL BUTTON_PREV      : STD_LOGIC := '1';
+    SIGNAL IMPULSE_INTERNAL : STD_LOGIC := '0';
+BEGIN
 
-    process(clk)
-    begin
-        if rising_edge(clk) then
-            button_prev <= button_sync;
-            button_sync <= btn_in;
-            impulse_internal <= '0';
+    PROCESS(CLK)
+    BEGIN
+        IF RISING_EDGE(CLK) THEN
+            BUTTON_PREV         <= BUTTON_SYNC;
+            BUTTON_SYNC         <= BTN_IN;
+            IMPULSE_INTERNAL    <= '0';
 
-            if button_prev = '0' and button_sync = '1' then
-                impulse_internal <= '1';
-            end if;
-        end if;
-    end process;
+            IF BUTTON_PREV = '0' AND BUTTON_SYNC = '1' THEN
+                IMPULSE_INTERNAL <= '1'; -- Button released
+            END IF;
+        END IF;
+    END PROCESS;
 
-    btn_out <= impulse_internal;
-end behavioral;
+    BTN_OUT <= IMPULSE_INTERNAL;
+END BEHAVIORAL;
+-- barbarbar338

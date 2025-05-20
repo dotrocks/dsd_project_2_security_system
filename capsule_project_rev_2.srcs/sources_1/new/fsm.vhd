@@ -1,161 +1,192 @@
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+-- barbarbar338
+LIBRARY IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
+USE IEEE.NUMERIC_STD.ALL;
 
-entity fsm_controller is
-    generic (
-        clocks_per_second : integer := 100_000_000;
-        simulation_mode : boolean := false
+ENTITY FSM_CONTROLLER IS
+    GENERIC (
+        CLOCKS_PER_SECOND   : INTEGER := 100_000_000;
+        SIMULATION_MODE     : BOOLEAN := FALSE
     );
-    port (
-        clk : in std_logic;
-        reset : in std_logic;
-        btn_setup : in std_logic;
-        btn_door : in std_logic;
-        btn_arm : in std_logic;
-        btn_send : in std_logic;
-        sw_pass : in std_logic_vector(9 downto 0);
-        saved_password : out std_logic_vector(9 downto 0);
-        wrong_count : out integer range 0 to 3;
-        state : out std_logic_vector(2 downto 0);
-        current_seconds : out integer range 0 to 30
+    PORT (
+        CLK             : IN  STD_LOGIC;
+        
+        -- INPUT
+        RESET           : IN  STD_LOGIC;
+        BTN_SETUP       : IN  STD_LOGIC;
+        BTN_DOOR        : IN  STD_LOGIC;
+        BTN_ARM         : IN  STD_LOGIC;
+        BTN_SEND        : IN  STD_LOGIC;
+        SW_PASS         : IN  STD_LOGIC_VECTOR(9 DOWNTO 0);
+        
+        SAVED_PASSWORD  : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
+        WRONG_COUNT     : OUT INTEGER RANGE 0 TO 3;
+        
+        STATE           : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        
+        CURRENT_SECONDS : OUT INTEGER RANGE 0 TO 30
     );
-end fsm_controller;
+END FSM_CONTROLLER;
 
-architecture behavioral of fsm_controller is
-    type state_type is (idle, setup_password, armed, door_open, breach);
-    signal current_state, next_state : state_type := idle;
-    signal current_password : std_logic_vector(9 downto 0);
-    signal current_wrong_count : integer range 0 to 3 := 0;
-    signal countdown_counter : unsigned(31 downto 0) := (others => '0');
-    signal second_tick : std_logic := '0';
-    signal sec_count : integer range 0 to 30 := 30;
-    signal countdown_done : std_logic := '0';
-    signal wrong_count_next : integer range 0 to 3 := 0;
-    signal update_wrong_count : std_logic := '0';
-    signal load_password : std_logic := '0';
-begin
-    process(clk)
-    begin
-        if rising_edge(clk) then
-            if current_state = door_open then
-                if ((not simulation_mode) and countdown_counter < to_unsigned(clocks_per_second - 1, 32)) or (simulation_mode and countdown_counter < to_unsigned(99, 32)) then
-                    countdown_counter <= countdown_counter + 1;
-                    second_tick <= '0';
-                else
-                    countdown_counter <= (others => '0');
-                    second_tick <= '1';
-                    if sec_count > 0 then
-                        sec_count <= sec_count - 1;
-                    end if;
-                end if;
+ARCHITECTURE BEHAVIORAL OF FSM_CONTROLLER IS
+    TYPE STATE_TYPE IS (IDLE, SETUP_PASSWORD, ARMED, DOOR_OPEN, BREACH);
+    SIGNAL CURRENT_STATE, NEXT_STATE    : STATE_TYPE                    := IDLE;
     
-                if sec_count = 0 then
-                    countdown_done <= '1';
-                else
-                    countdown_done <= '0';
-                end if;
-            else
-                countdown_counter <= (others => '0');
-                sec_count <= 30;
-                countdown_done <= '0';
-            end if;
-        end if;
-    end process;
+    SIGNAL CURRENT_PASSWORD             : STD_LOGIC_VECTOR(9 DOWNTO 0);
+    SIGNAL CURRENT_WRONG_COUNT          : INTEGER RANGE 0 TO 3          := 0;
+    
+    SIGNAL COUNTDOWN_COUNTER            : UNSIGNED(31 DOWNTO 0)         := (OTHERS => '0');
+    SIGNAL SECOND_TICK                  : STD_LOGIC                     := '0';
+    SIGNAL SEC_COUNT                    : INTEGER RANGE 0 TO 30         := 30;
+    SIGNAL COUNTDOWN_DONE               : STD_LOGIC                     := '0';
+    
+    SIGNAL WRONG_COUNT_NEXT             : INTEGER RANGE 0 TO 3          := 0;
+    SIGNAL UPDATE_WRONG_COUNT           : STD_LOGIC                     := '0';
+    SIGNAL LOAD_PASSWORD                : STD_LOGIC                     := '0';
+BEGIN
+    -- Countdown logic
+    PROCESS(CLK)
+    BEGIN
+        IF RISING_EDGE(CLK) THEN
+            IF CURRENT_STATE = DOOR_OPEN THEN
+                IF ((NOT SIMULATION_MODE) AND COUNTDOWN_COUNTER < TO_UNSIGNED(CLOCKS_PER_SECOND - 1, 32))
+                    OR (SIMULATION_MODE AND COUNTDOWN_COUNTER < TO_UNSIGNED(99, 32)) THEN
+                    COUNTDOWN_COUNTER   <= COUNTDOWN_COUNTER + 1;
+                    SECOND_TICK         <= '0';
+                ELSE
+                    COUNTDOWN_COUNTER   <= (OTHERS => '0');
+                    SECOND_TICK         <= '1';
+    
+                    IF SEC_COUNT > 0 THEN
+                        SEC_COUNT <= SEC_COUNT - 1;
+                    END IF;
+                END IF;
+    
+                IF SEC_COUNT = 0 THEN
+                    COUNTDOWN_DONE <= '1';
+                ELSE
+                    COUNTDOWN_DONE <= '0';
+                END IF;
+            ELSE
+                COUNTDOWN_COUNTER   <= (OTHERS => '0');
+                SEC_COUNT           <= 30;
+                COUNTDOWN_DONE      <= '0';
+            END IF;
+        END IF;
+    END PROCESS;
 
-    process(clk, reset)
-    begin
-        if reset = '1' then
-            current_state <= idle;
-            current_wrong_count <= 0;
-            current_password <= (others => '0');
-        elsif rising_edge(clk) then
-            current_state <= next_state;
-            if update_wrong_count = '1' then
-                current_wrong_count <= wrong_count_next;
-                wrong_count <= wrong_count_next;
-            end if;
+    -- FSM logic
+    PROCESS(CLK, RESET)
+    BEGIN
+        IF RESET = '1' THEN
+            CURRENT_STATE       <= IDLE;
+            CURRENT_WRONG_COUNT <= 0;
+        ELSIF RISING_EDGE(CLK) THEN
+            CURRENT_STATE <= NEXT_STATE;
     
-            if load_password = '1' then
-                if sw_pass > "1111100111" then
-                    current_password <= "1111100111";
-                else
-                    current_password <= sw_pass;
-                end if;
-            end if;
-        end if;
-    end process;
+            -- Update internal data at clock edge
+            IF UPDATE_WRONG_COUNT = '1' THEN
+                CURRENT_WRONG_COUNT <= WRONG_COUNT_NEXT;
+                WRONG_COUNT         <= WRONG_COUNT_NEXT;
+            END IF;
+            
+            IF LOAD_PASSWORD = '1' THEN
+            
+                -- Clamp password to 999
+                IF TO_INTEGER(UNSIGNED(SW_PASS)) > 999 THEN
+                    CURRENT_PASSWORD <= STD_LOGIC_VECTOR(TO_UNSIGNED(999, 10));
+                ELSE
+                    CURRENT_PASSWORD <= SW_PASS;
+                END IF;
+            END IF;
+        END IF;
+    END PROCESS;
     
-    process(current_state, btn_setup, btn_arm, btn_door, btn_send, sw_pass, current_password, countdown_done, current_wrong_count)
-    begin
-        next_state <= current_state;
-        wrong_count_next <= current_wrong_count;
-        load_password <= '0';
-        update_wrong_count <= '0';
-        saved_password <= (others => '0');
+    PROCESS(CURRENT_STATE, BTN_SETUP, BTN_ARM, BTN_DOOR, BTN_SEND, SW_PASS, CURRENT_PASSWORD, COUNTDOWN_DONE, CURRENT_WRONG_COUNT)
+    BEGIN
+        -- Default assignments
+        NEXT_STATE         <= CURRENT_STATE;
+        WRONG_COUNT_NEXT   <= CURRENT_WRONG_COUNT;
+        LOAD_PASSWORD      <= '0';
+        UPDATE_WRONG_COUNT <= '0';
+        SAVED_PASSWORD     <= (OTHERS => '0');
     
-        case current_state is
-            when idle =>
-                if btn_setup = '1' then
-                    next_state <= setup_password;
-                elsif btn_arm = '1' then
-                    next_state <= armed;
-                end if;
-                state <= "000";
-                wrong_count_next <= 0;
-                update_wrong_count <= '1';
+        CASE CURRENT_STATE IS
+            WHEN IDLE =>
+                IF BTN_SETUP = '1' THEN
+                    NEXT_STATE <= SETUP_PASSWORD;
+                ELSIF BTN_ARM = '1' THEN
+                    NEXT_STATE <= ARMED;
+                END IF;
+                STATE               <= "000";
+                WRONG_COUNT_NEXT    <= 0;
+                UPDATE_WRONG_COUNT  <= '1';
     
-            when setup_password =>
-                state <= "001";
-                saved_password <= sw_pass;
-                load_password <= '1';
-                wrong_count_next <= 0;
-                update_wrong_count <= '1';
-                if btn_setup = '1' then
-                    next_state <= idle;
-                end if;
+            WHEN SETUP_PASSWORD =>
+            
+                -- Clamp password to 999
+                IF TO_INTEGER(UNSIGNED(SW_PASS)) > 999 THEN
+                    SAVED_PASSWORD <= STD_LOGIC_VECTOR(TO_UNSIGNED(999, 10));
+                ELSE
+                    SAVED_PASSWORD <= SW_PASS;
+                END IF;
+                
+                STATE               <= "001";
+                LOAD_PASSWORD       <= '1';
+                WRONG_COUNT_NEXT    <= 0;
+                UPDATE_WRONG_COUNT  <= '1';
+                IF BTN_SETUP = '1' THEN
+                    NEXT_STATE <= IDLE;
+                END IF;
     
-            when armed =>
-                state <= "010";
-                wrong_count_next <= 0;
-                update_wrong_count <= '1';
-                if btn_door = '1' then
-                    next_state <= door_open;
-                end if;
+            WHEN ARMED =>
+                STATE               <= "010";
+                WRONG_COUNT_NEXT    <= 0;
+                UPDATE_WRONG_COUNT  <= '1';
+                IF BTN_DOOR = '1' THEN
+                    NEXT_STATE <= DOOR_OPEN;
+                END IF;
     
-            when door_open =>
-                state <= "011";
-                if btn_send = '1' then
-                    if sw_pass = current_password then
-                        next_state <= idle;
-                        wrong_count_next <= 0;
-                    else
-                        if current_wrong_count < 2 then
-                            wrong_count_next <= current_wrong_count + 1;
-                            next_state <= door_open;
-                        else
-                            wrong_count_next <= 3;
-                            next_state <= breach;
-                        end if;
-                    end if;
-                    update_wrong_count <= '1';
-                elsif countdown_done = '1' then
-                    wrong_count_next <= 0;
-                    update_wrong_count <= '1';
-                    next_state <= breach;
-                end if;
+            WHEN DOOR_OPEN =>
+                STATE <= "011";
+                IF BTN_SEND = '1' THEN
+                
+                    -- Clamp password to 999
+                    IF 
+                        ((TO_INTEGER(UNSIGNED(SW_PASS)) > 999) AND (TO_INTEGER(UNSIGNED(CURRENT_PASSWORD)) = 999)) 
+                        OR (SW_PASS = CURRENT_PASSWORD)
+                    THEN
+                        NEXT_STATE          <= IDLE;
+                        WRONG_COUNT_NEXT    <= 0;
+                    ELSE
+                        IF CURRENT_WRONG_COUNT < 2 THEN
+                            WRONG_COUNT_NEXT    <= CURRENT_WRONG_COUNT + 1;
+                            NEXT_STATE          <= DOOR_OPEN;
+                        ELSE
+                            WRONG_COUNT_NEXT    <= 3;
+                            NEXT_STATE          <= BREACH;
+                        END IF;
+                    END IF;
+                    
+                    UPDATE_WRONG_COUNT <= '1';
+                ELSIF COUNTDOWN_DONE = '1' THEN
+                    WRONG_COUNT_NEXT    <= 0;
+                    UPDATE_WRONG_COUNT  <= '1';
+                    NEXT_STATE          <= BREACH;
+                END IF;
     
-            when breach =>
-                state <= "100";
-                wrong_count_next <= 0;
-                update_wrong_count <= '1';
+            WHEN BREACH =>
+                STATE               <= "100";
+                WRONG_COUNT_NEXT    <= 0;
+                UPDATE_WRONG_COUNT  <= '1';
     
-            when others =>
-                next_state <= idle;
-                wrong_count_next <= 0;
-                update_wrong_count <= '1';
-        end case;
-    end process;
+            WHEN OTHERS =>
+                NEXT_STATE          <= IDLE;
+                WRONG_COUNT_NEXT    <= 0;
+                UPDATE_WRONG_COUNT  <= '1';
+        END CASE;
+    END PROCESS;
     
-    current_seconds <= sec_count;
-end behavioral;
+    CURRENT_SECONDS <= SEC_COUNT;
+END BEHAVIORAL;
+-- barbarbar338
