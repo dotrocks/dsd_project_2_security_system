@@ -88,12 +88,11 @@ BEGIN
                 CURRENT_WRONG_COUNT <= WRONG_COUNT_NEXT;
                 WRONG_COUNT         <= WRONG_COUNT_NEXT;
             END IF;
-    
-            IF LOAD_PASSWORD = '1' THEN
             
-                -- Clamp SW_PASS to 999
-                IF SW_PASS > "1111100111" THEN
-                    CURRENT_PASSWORD <= "1111100111"; -- 999
+            IF LOAD_PASSWORD = '1' THEN
+                -- Clamp password to 999
+                IF TO_INTEGER(UNSIGNED(SW_PASS)) > 999 THEN
+                    CURRENT_PASSWORD <= STD_LOGIC_VECTOR(TO_UNSIGNED(999, 10));
                 ELSE
                     CURRENT_PASSWORD <= SW_PASS;
                 END IF;
@@ -123,7 +122,14 @@ BEGIN
     
             WHEN SETUP_PASSWORD =>
                 STATE               <= "001";
-                SAVED_PASSWORD      <= SW_PASS;
+                
+                -- Clamp password to 999
+                IF TO_INTEGER(UNSIGNED(SW_PASS)) > 999 THEN
+                    SAVED_PASSWORD <= STD_LOGIC_VECTOR(TO_UNSIGNED(999, 10));
+                ELSE
+                    SAVED_PASSWORD <= SW_PASS;
+                END IF;
+                
                 LOAD_PASSWORD       <= '1';
                 WRONG_COUNT_NEXT    <= 0;
                 UPDATE_WRONG_COUNT  <= '1';
@@ -142,7 +148,11 @@ BEGIN
             WHEN DOOR_OPEN =>
                 STATE <= "011";
                 IF BTN_SEND = '1' THEN
-                    IF SW_PASS = CURRENT_PASSWORD THEN
+                    -- Clamp password to 999
+                    IF 
+                        ((TO_INTEGER(UNSIGNED(SW_PASS)) > 999) AND (TO_INTEGER(UNSIGNED(CURRENT_PASSWORD)) = 999)) 
+                        OR (SW_PASS = CURRENT_PASSWORD)
+                        THEN
                         NEXT_STATE          <= IDLE;
                         WRONG_COUNT_NEXT    <= 0;
                     ELSE
@@ -154,6 +164,7 @@ BEGIN
                             NEXT_STATE          <= BREACH;
                         END IF;
                     END IF;
+                    
                     UPDATE_WRONG_COUNT <= '1';
                 ELSIF COUNTDOWN_DONE = '1' THEN
                     WRONG_COUNT_NEXT    <= 0;
