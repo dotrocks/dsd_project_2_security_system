@@ -17,23 +17,22 @@ END LED_CONTROLLER;
 
 ARCHITECTURE BEHAVIORAL OF LED_CONTROLLER IS 
     -- Use a constant function to compute blink ticks with simulation support
-    FUNCTION compute_blink_ticks (
-        clk_per_sec : INTEGER;
-        period_ms   : INTEGER;
-        sim_mode    : BOOLEAN
+    FUNCTION COMPUTE_BLINK_TICKS (
+        CLK_PER_SEC : INTEGER;
+        PERIOD_MS   : INTEGER;
+        SIM_MODE    : BOOLEAN
     ) RETURN INTEGER IS
     BEGIN
-        IF sim_mode THEN
-            RETURN 10;  -- small number for quick blink in simulation
+        IF SIM_MODE THEN
+            RETURN 10;  -- SMALL NUMBER FOR QUICK BLINK IN SIMULATION
         ELSE
-            RETURN (clk_per_sec / 1000) * period_ms;
+            RETURN (CLK_PER_SEC / 1000) * PERIOD_MS;
         END IF;
     END FUNCTION;
 
-    CONSTANT BLINK_TOGGLE_TICKS : INTEGER := compute_blink_ticks(CLOCKS_PER_SECOND, BLINK_PERIOD_MS, SIMULATION_MODE);
-    
-    SIGNAL BLINK_COUNTER : INTEGER RANGE 0 TO BLINK_TOGGLE_TICKS-1 := 0;  
-    SIGNAL BLINK_STATE   : STD_LOGIC := '0'; 
+    CONSTANT BLINK_TOGGLE_TICKS : INTEGER                                   := COMPUTE_BLINK_TICKS(CLOCKS_PER_SECOND, BLINK_PERIOD_MS, SIMULATION_MODE);
+    SIGNAL BLINK_COUNTER        : INTEGER RANGE 0 TO BLINK_TOGGLE_TICKS - 1 := 0;  
+    SIGNAL BLINK_STATE          : STD_LOGIC                                 := '0'; 
 BEGIN 
 
     PROCESS(CLK)

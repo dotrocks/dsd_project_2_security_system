@@ -90,6 +90,7 @@ BEGIN
             END IF;
             
             IF LOAD_PASSWORD = '1' THEN
+            
                 -- Clamp password to 999
                 IF TO_INTEGER(UNSIGNED(SW_PASS)) > 999 THEN
                     CURRENT_PASSWORD <= STD_LOGIC_VECTOR(TO_UNSIGNED(999, 10));
@@ -121,8 +122,7 @@ BEGIN
                 UPDATE_WRONG_COUNT  <= '1';
     
             WHEN SETUP_PASSWORD =>
-                STATE               <= "001";
-                
+            
                 -- Clamp password to 999
                 IF TO_INTEGER(UNSIGNED(SW_PASS)) > 999 THEN
                     SAVED_PASSWORD <= STD_LOGIC_VECTOR(TO_UNSIGNED(999, 10));
@@ -130,6 +130,7 @@ BEGIN
                     SAVED_PASSWORD <= SW_PASS;
                 END IF;
                 
+                STATE               <= "001";
                 LOAD_PASSWORD       <= '1';
                 WRONG_COUNT_NEXT    <= 0;
                 UPDATE_WRONG_COUNT  <= '1';
@@ -148,11 +149,12 @@ BEGIN
             WHEN DOOR_OPEN =>
                 STATE <= "011";
                 IF BTN_SEND = '1' THEN
+                
                     -- Clamp password to 999
                     IF 
                         ((TO_INTEGER(UNSIGNED(SW_PASS)) > 999) AND (TO_INTEGER(UNSIGNED(CURRENT_PASSWORD)) = 999)) 
                         OR (SW_PASS = CURRENT_PASSWORD)
-                        THEN
+                    THEN
                         NEXT_STATE          <= IDLE;
                         WRONG_COUNT_NEXT    <= 0;
                     ELSE
